@@ -1,0 +1,1 @@
+export const CONTENT_SCRIPT_MATCHES = "https://www.youtube.com/*";
