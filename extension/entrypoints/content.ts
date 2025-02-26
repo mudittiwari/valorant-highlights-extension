@@ -5,9 +5,11 @@ export default defineContentScript({
   async main(ctx) {
     let screenStream: MediaStream | null = null;
     let isRecording = false;
+    let isRecordingStopped = true;
     console.log("Hello from content script")
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "startRecording") {
+        isRecordingStopped=false;
         startScreenRecording();
       }
     });
@@ -25,13 +27,15 @@ export default defineContentScript({
           track.stop();
         });
         screenStream = null;
-        console.log("🛑 Screen stream stopped.");
-        chrome.runtime.sendMessage({
-          type: "recordingStopped", options: {
-            data:"recordingStopped"
-          }
-        });
+        console.log("🛑 Screen stream stopped."); 
       }
+      chrome.runtime.sendMessage({
+        type: "recordingStopped", options: {
+          data:"recordingStopped"
+        }
+      });
+      await storage.setItem("local:isRecording", "false");
+      isRecordingStopped=true;
     }
 
     async function getScreenStream() {
@@ -47,7 +51,7 @@ export default defineContentScript({
       return screenStream;
     }
     async function startScreenRecording() {
-
+      if(isRecordingStopped) return;
       console.log("starting screen recording again");
       let recordedChunks: Blob[] = [];
       let recorder: RecordRTCPromisesHandler;
@@ -58,6 +62,7 @@ export default defineContentScript({
             data:"recordingStarted"
           }
         });
+       await storage.setItem("local:isRecording", "true");
         console.log("🎬 Starting new 20-second recording...");
         const stream = await getScreenStream();
         const recorder = new RecordRTCPromisesHandler(stream, {

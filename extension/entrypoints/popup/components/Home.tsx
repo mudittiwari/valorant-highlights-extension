@@ -26,14 +26,27 @@ const Home: React.FC = () => {
 
   // Stop recording by sending message to the background script
   const stopRecording = () => {
-    setLoading(true);
-    chrome.runtime.sendMessage({ action: 'stopRecording' }, () => {
-      setIsRecording(false);
-      setLoading(false);
+    console.log("stopping recording");
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs.length > 0 && tabs[0].id !== undefined) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "stopRecording"},
+          function (response) {
+            if (browser.runtime.lastError) {
+              console.error("Error sending message:", browser.runtime.lastError);
+            }
+          });
+      } else {
+        console.error("No active tab found or tab ID is undefined.");
+      }
     });
   };
 
+  const getRecordingData = async () => {
+    const recordingStatus = await storage.getItem('local:isRecording');
+    setIsRecording(recordingStatus === 'true');
+  };
   useEffect(()=>{
+    getRecordingData();
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log(message);
       if (message.type === 'recordingStopped') {
